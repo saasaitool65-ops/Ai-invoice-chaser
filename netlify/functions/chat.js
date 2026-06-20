@@ -1,7 +1,11 @@
-
-const crypto = require('crypto');
+// ============================================================
+// netlify/functions/chat.js — Gemini AI Backend (Netlify Function)
+// Yeh file /api/chat pe automatically backend ban jaati hai
+// Gemini key sirf Netlify environment mein hoti hai — safe!
+// ============================================================
 
 exports.handler = async function (event, context) {
+  // Only POST allowed
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -10,6 +14,7 @@ exports.handler = async function (event, context) {
     };
   }
 
+  // OPTIONS preflight (browser CORS check)
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders(), body: '' };
   }
@@ -25,16 +30,13 @@ exports.handler = async function (event, context) {
       };
     }
 
+    // Build prompt from invoiceData if sent directly
     const finalPrompt = prompt || buildPrompt(invoiceData, tone);
-    const GEMINI_KEY = process.env.GEMINI_KEY;
 
-    if (!GEMINI_KEY) {
-      return {
-        statusCode: 500,
-        headers: corsHeaders(),
-        body: JSON.stringify({ error: 'GEMINI_KEY not configured' }),
-      };
-    }
+    // ✅ GEMINI_KEY — Netlify Dashboard mein daalo
+    // Site Settings → Environment Variables → GEMINI_KEY
+    // Google AI Studio se key lo: https://aistudio.google.com/apikey
+    const GEMINI_KEY = process.env.GEMINI_KEY;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
@@ -61,6 +63,9 @@ exports.handler = async function (event, context) {
     }
 
     const geminiData = await response.json();
+
+    // Gemini response ko Anthropic-style format mein convert karo
+    // Taaki frontend code change na karna pade
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const data = {
       content: [{ type: 'text', text }],
@@ -81,6 +86,7 @@ exports.handler = async function (event, context) {
   }
 };
 
+// CORS headers helper
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -90,6 +96,7 @@ function corsHeaders() {
   };
 }
 
+// Helper — prompt builder
 function buildPrompt(inv, tone) {
   const toneMap = {
     friendly: 'warm, friendly and understanding. Like a colleague reminding a friend. Polite, no pressure.',
@@ -97,4 +104,4 @@ function buildPrompt(inv, tone) {
     firm: 'firm, direct and serious. Make the urgency absolutely clear.',
   };
   return `Write an invoice follow-up email. Respond ONLY in this exact format:\nSUBJECT: [subject line]\nBODY:\n[email body]\n\nDetails:\n- Client: ${inv.client}\n- Invoice: ${inv.invno}\n- Amount: $${Number(inv.amount).toLocaleString()}\n- Days overdue: ${inv.daysOverdue}\n- Service: ${inv.desc || 'professional services'}\n- Payment link: ${inv.paylink || '(not provided)'}\n- Reminder number: ${inv.sent + 1}\n- Tone: ${toneMap[tone] || toneMap.friendly}\n\nRules: Under 110 words. Use actual values. Sign as: Best regards, [Your Name]`;
-  }
+}
