@@ -1,0 +1,21 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# /api/chat  →  netlify/functions/chat.js
+[[redirects]]
+  from = "/api/chat"
+  to = "/.netlify/functions/chat"
+  status = 200
+
+# /api/payment  →  netlify/functions/payment.js (Gumroad webhook)
+[[redirects]]
+  from = "/api/payment"
+  to = "/.netlify/functions/payment"
+  status = 200
+
+# SPA fallback — baaki sabhi routes index.html par jaayen
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
